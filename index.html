@@ -266,6 +266,7 @@ footer{padding-block:36px;color:var(--mute);font-size:.86rem;border-top:1px soli
     </a>
     <ul>
       <li><a href="#home">Home</a></li>
+      <li><a href="#apps">Apps</a></li>
       <li><a href="#learn">Learn</a></li>
       <li><a href="#connect">Connect</a></li>
       <li><a href="#advertise">Advertise</a></li>
@@ -325,6 +326,88 @@ footer{padding-block:36px;color:var(--mute);font-size:.86rem;border-top:1px soli
   </div>
 </section>
 </div>
+
+<section class="block pg" id="apps" data-name="apps" data-title="Apps">
+  <style>
+  .appshow{display:grid;grid-template-columns:240px minmax(0,1fr);gap:30px;margin-top:4px}
+  .applist{display:flex;flex-direction:column;gap:8px}
+  .appitem{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel);cursor:pointer;transition:.18s}
+  .appitem:hover{border-color:var(--amber)}
+  .appitem.on{border-color:transparent;background:linear-gradient(115deg,rgba(255,79,123,.16),rgba(255,181,71,.14));box-shadow:0 0 0 1.5px var(--rose) inset}
+  .appitem .ic{width:40px;height:40px;border-radius:12px;background:#0d1530;display:grid;place-items:center;font-size:20px;flex:none}
+  .appitem.on .ic{background:var(--grad)}
+  .appitem .tx{flex:1;min-width:0}
+  .appitem .tx b{display:block;font-size:14px;font-family:var(--f-body);font-weight:700}
+  .appitem .tx span{display:block;font-size:11.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .appitem .d{width:8px;height:8px;border-radius:50%;flex:none}
+  .appitem .d.live{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .appitem .d.soon{background:var(--mute)}
+  .appstage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:36px;align-items:center}
+  .appdevice{justify-self:center;position:relative;width:min(258px,70vw);aspect-ratio:9/19;border-radius:34px;background:#05070f;border:2px solid rgba(255,255,255,.1);box-shadow:0 36px 80px -30px rgba(0,0,0,.85);padding:9px}
+  .appdevice::before{content:"";position:absolute;top:12px;left:50%;transform:translateX(-50%);width:32%;height:6px;border-radius:6px;background:rgba(255,255,255,.14);z-index:3}
+  .appscreen{position:absolute;inset:9px;border-radius:27px;overflow:hidden;background:var(--panel)}
+  .appscreen iframe{width:100%;height:100%;border:0;display:block}
+  .appph{position:absolute;inset:0;display:flex;flex-direction:column;gap:13px;align-items:center;justify-content:center;text-align:center;padding:26px;background:radial-gradient(420px 360px at 50% 20%,rgba(255,79,123,.2),transparent 60%),var(--bg2)}
+  .appph .ic{width:66px;height:66px;border-radius:20px;background:linear-gradient(115deg,rgba(255,79,123,.18),rgba(255,181,71,.14));display:grid;place-items:center;font-size:32px;border:1px solid var(--line)}
+  .appph .pill{margin:0}
+  .appinfo{min-width:0;max-width:460px}
+  .appinfo .top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .appinfo .bic{width:50px;height:50px;border-radius:14px;background:linear-gradient(115deg,rgba(255,79,123,.18),rgba(255,181,71,.14));display:grid;place-items:center;font-size:25px;border:1px solid var(--line)}
+  .pill{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+  .pill.live{background:rgba(61,220,151,.14);color:var(--ok);border:1px solid rgba(61,220,151,.4)}
+  .pill.soon{background:#0d1530;color:var(--mute);border:1px solid var(--line)}
+  .appinfo h3.an{font-family:var(--f-display);font-size:1.5rem;margin-bottom:8px}
+  .appinfo .ad{color:var(--mute);margin-bottom:16px}
+  .appinfo ul.af{list-style:none;padding:0;margin:0 0 20px;display:grid;gap:10px}
+  .appinfo ul.af li{display:flex;gap:10px;align-items:center;font-size:.95rem}
+  .appinfo ul.af li .ck{color:var(--ok);font-weight:800}
+  @media(max-width:900px){.appshow{grid-template-columns:1fr}.applist{flex-direction:row;overflow-x:auto}.appitem{flex:none;min-width:210px}.appstage{grid-template-columns:1fr;gap:26px}}
+  </style>
+  <div class="wrap">
+    <div class="sechead"><div class="eyebrow">Our Apps</div><h2>Working apps, built to help</h2><p>Real tools under the SetupGo brand — try them live, right here.</p></div>
+    <div class="appshow">
+      <aside class="applist" id="applist"></aside>
+      <div class="appstage">
+        <div class="appdevice"><div class="appscreen" id="appscreen"></div></div>
+        <div class="appinfo" id="appinfo"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var P=[
+      {id:'locate',icon:'📍',name:'SetupGo Locate',tag:'Live location sharing',live:true,url:'https://bongcustodio.github.io/setupgo-locate/',preview:'iframe',
+        desc:'Create a group, invite your family or team with a one-tap code, and see each other live on a real map. Built on consent — everyone chooses to share, and you stay in control.',
+        feats:['Live real-time location sharing','Family & Team groups with admin controls','Places, geofence alerts & SOS','Invite by code — one tap to join']},
+      {id:'calib',icon:'📊',name:'Calibration Monitor',tag:'Calibration dashboard',live:false,preview:'soon',
+        desc:'Track calibration due dates, status and compliance for all your equipment in one clean dashboard.',
+        feats:['Due-date tracking & alerts','Status & compliance at a glance','Built for engineers & technicians']},
+      {id:'flow',icon:'📈',name:'ProcessFlow',tag:'Yield & quality tracker',live:false,preview:'soon',
+        desc:'Monitor yield and quality with per-step defect analysis, grounded in DMAIC and Six Sigma thinking.',
+        feats:['Per-step defect analysis','Yield & quality trends','DMAIC-based insights']},
+      {id:'downtime',icon:'⚙️',name:'Machine Downtime',tag:'Downtime logging',live:false,preview:'soon',
+        desc:'Log, monitor and analyze equipment downtime to cut losses and improve uptime across your line.',
+        feats:['Fast downtime logging','Loss & uptime analytics','Root-cause friendly']},
+      {id:'sixsigma',icon:'🎯',name:'Six Sigma Toolkit',tag:'Practical SS tools',live:false,preview:'soon',
+        desc:'A practical toolkit of Six Sigma tools and guides for technicians and engineers.',
+        feats:['Hands-on tools & guides','For technicians & engineers','Clear, practical, usable']}
+    ];
+    var list=document.getElementById('applist'),screen=document.getElementById('appscreen'),info=document.getElementById('appinfo'),cur=null;
+    P.forEach(function(p,i){var el=document.createElement('div');el.className='appitem'+(i===0?' on':'');el.dataset.id=p.id;
+      el.innerHTML='<div class="ic">'+p.icon+'</div><div class="tx"><b>'+p.name+'</b><span>'+p.tag+'</span></div><div class="d '+(p.live?'live':'soon')+'"></div>';
+      el.addEventListener('click',function(){sel(p.id);});list.appendChild(el);});
+    function sel(id){var p=P.filter(function(x){return x.id===id;})[0];if(!p||cur===id)return;cur=id;
+      Array.prototype.forEach.call(document.querySelectorAll('.appitem'),function(e){e.classList.toggle('on',e.dataset.id===id);});
+      if(p.preview==='iframe'){screen.innerHTML='<iframe src="'+p.url+'" loading="lazy" referrerpolicy="no-referrer"></iframe>';}
+      else{screen.innerHTML='<div class="appph"><div class="ic">'+p.icon+'</div><div class="pill soon">Coming soon</div><div style="font-weight:700;font-family:var(--f-body)">'+p.name+'</div></div>';}
+      var feats=p.feats.map(function(f){return '<li><span class="ck">✓</span> '+f+'</li>';}).join('');
+      var btn=p.live?'<a class="btn primary" href="'+p.url+'" target="_blank" rel="noopener">Open app ↗</a>':'<button class="btn" disabled style="opacity:.55;cursor:default">Coming soon</button>';
+      info.innerHTML='<div class="top"><div class="bic">'+p.icon+'</div><span class="pill '+(p.live?'live':'soon')+'">'+(p.live?'● Live':'Soon')+'</span></div><h3 class="an">'+p.name+'</h3><p class="ad">'+p.desc+'</p><ul class="af">'+feats+'</ul>'+btn;
+    }
+    sel('locate');
+  })();
+  </script>
+</section>
 
 <section class="block pg" id="learn" data-name="learn" data-title="Learn">
   <div class="wrap">
