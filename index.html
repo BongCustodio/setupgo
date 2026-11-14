@@ -376,9 +376,10 @@ footer{padding-block:36px;color:var(--mute);font-size:.86rem;border-top:1px soli
   <script>
   (function(){
     var P=[
-      {id:'locate',icon:'📍',name:'SetupGo Locate',tag:'Live location sharing',live:true,url:'https://bongcustodio.github.io/setupgo-locate/',preview:'iframe',
+      {id:'locate',icon:'📍',name:'SetupGo Locate',tag:'Live location sharing',live:true,url:'https://locate.setupgo.net/',preview:'iframe',
         desc:'Create a group, invite your family or team with a one-tap code, and see each other live on a real map. Built on consent — everyone chooses to share, and you stay in control.',
-        feats:['Live real-time location sharing','Family & Team groups with admin controls','Places, geofence alerts & SOS','Invite by code — one tap to join']},
+        feats:['Live real-time location sharing','Family & Team groups with admin controls','Places, geofence alerts & SOS','Invite by code — one tap to join'],
+        extra:[{label:'🏢 Business app ↗',url:'https://business.setupgo.net/'},{label:'📖 User guide ↗',url:'https://locate.setupgo.net/guide.html'}]},
       {id:'calib',icon:'📊',name:'Calibration Monitor',tag:'Calibration dashboard',live:false,preview:'soon',
         desc:'Track calibration due dates, status and compliance for all your equipment in one clean dashboard.',
         feats:['Due-date tracking & alerts','Status & compliance at a glance','Built for engineers & technicians']},
@@ -402,7 +403,8 @@ footer{padding-block:36px;color:var(--mute);font-size:.86rem;border-top:1px soli
       else{screen.innerHTML='<div class="appph"><div class="ic">'+p.icon+'</div><div class="pill soon">Coming soon</div><div style="font-weight:700;font-family:var(--f-body)">'+p.name+'</div></div>';}
       var feats=p.feats.map(function(f){return '<li><span class="ck">✓</span> '+f+'</li>';}).join('');
       var btn=p.live?'<a class="btn primary" href="'+p.url+'" target="_blank" rel="noopener">Open app ↗</a>':'<button class="btn" disabled style="opacity:.55;cursor:default">Coming soon</button>';
-      info.innerHTML='<div class="top"><div class="bic">'+p.icon+'</div><span class="pill '+(p.live?'live':'soon')+'">'+(p.live?'● Live':'Soon')+'</span></div><h3 class="an">'+p.name+'</h3><p class="ad">'+p.desc+'</p><ul class="af">'+feats+'</ul>'+btn;
+      var extra=(p.live&&p.extra)?p.extra.map(function(x){return '<a class="btn" href="'+x.url+'" target="_blank" rel="noopener">'+x.label+'</a>';}).join(''):'';
+      info.innerHTML='<div class="top"><div class="bic">'+p.icon+'</div><span class="pill '+(p.live?'live':'soon')+'">'+(p.live?'● Live':'Soon')+'</span></div><h3 class="an">'+p.name+'</h3><p class="ad">'+p.desc+'</p><ul class="af">'+feats+'</ul><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+btn+extra+'</div>';
     }
     sel('locate');
   })();
