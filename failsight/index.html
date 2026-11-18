@@ -100,6 +100,7 @@ ul.tight{margin:6px 0;padding-left:18px}ul.tight li{margin:3px 0}
 details.more summary{cursor:pointer;font-weight:700}.flist{list-style:none;padding:0;margin:10px 0}.flist li{margin:9px 0}
 .mdl{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;place-items:center;z-index:46}.mdl .box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;width:min(460px,92vw);max-height:88vh;overflow:auto}
 .btn.aiS{border-color:rgba(255,176,59,.5);color:#ffd28a}
+#aiBusy{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:44;background:#0b1633;border:1px solid var(--amber);border-radius:999px;padding:8px 14px;font-size:13px;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(0,0,0,.4);max-width:92vw}
 footer{color:var(--mut);font-size:12px;text-align:center;padding:20px}
 </style>
 </head>
@@ -351,10 +352,11 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:20px}
   <div id="repPreview"></div>
 </section>
 </main>
-<footer>SetupGo FailSight v3.2 · © 2026 SetupGo Digital Design Services · Fernando Bolen Custodio. All rights reserved.<br>Simulations are simplified teaching models of each failure mechanism.</footer>
+<footer>SetupGo FailSight v3.3 · © 2026 SetupGo Digital Design Services · Fernando Bolen Custodio. All rights reserved.<br>Simulations are simplified teaching models of each failure mechanism.</footer>
 
 <div id="dlg"><div class="box"><b>Add text label</b><input type="text" id="dlgIn" placeholder="e.g. Crack origin"><div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn sm" id="dlgNo">Cancel</button><button class="btn sm pri" id="dlgOk">Add</button></div></div></div>
 <div id="toast"></div>
+<div id="aiBusy" style="display:none"></div>
 <div class="mdl" id="loginDlg"><div class="box"><div class="row" style="justify-content:space-between"><b style="font-size:18px">👤 Log in</b><button class="btn sm dlgX">✕</button></div><div id="loginBody"></div></div></div>
 <div class="mdl" id="acctDlg"><div class="box"><div class="row" style="justify-content:space-between"><b style="font-size:18px">⚙️ Account</b><button class="btn sm dlgX">✕</button></div><div id="acctBody"></div></div></div>
 <div class="mdl" id="outDlg"><div class="box"><b>Log out?</b><p class="small mut">Work on this screen that you have not downloaded will be cleared.</p><div class="row" style="justify-content:flex-end"><button class="btn sm" id="outNo">Cancel</button><button class="btn sm pri" id="outYes">Log out</button></div></div></div>
@@ -743,7 +745,7 @@ $('#aiBtn').onclick=async()=>{if(!SAMPLE)return;if(!st.img){toast('Add a photo f
   const b=$('#aiBtn');b.disabled=true;$('#aiStatus').innerHTML=`<span class="spin"></span> Analyzing ${st.photos.length} photo(s)… (about 20–60 s)`;$('#aiOut').innerHTML='';
   try{let canImg=true,maxImg=8;try{const lim=await SAMPLE.limits();canImg=!!(lim&&lim.images);if(typeof lim.images==='number')maxImg=lim.images;else if(lim&&typeof lim.maxImages==='number')maxImg=lim.maxImages}catch(e){}
     if(!canImg)throw{code:'no_images',message:'Image analysis is not available in this view.'};
-    const n=Math.min(st.photos.length,Math.max(1,maxImg));const blobs=[];for(let i=0;i<n;i++){const c=exportCanvas(1200,i);blobs.push(await new Promise(r=>c.toBlob(r,'image/jpeg',.85)))}st.aiBlobs=blobs;const plist=st.photos.slice(0,n).map((P,i)=>`Photo ${i+1}: ${P.label}${P.note?` — troubleshooter note: "${P.note}"`:''}`).join('\n');
+    const n=Math.min(st.photos.length,Math.max(1,maxImg));const blobs=[];for(let i=0;i<n;i++){const c=exportCanvas(900,i);blobs.push(await new Promise(r=>c.toBlob(r,'image/jpeg',.8)))}st.aiBlobs=blobs;const plist=st.photos.slice(0,n).map((P,i)=>`Photo ${i+1}: ${P.label}${P.note?` — troubleshooter note: "${P.note}"`:''}`).join('\n');
     const info=`Machine: ${$('#fMachine').value||'-'}\nPart: ${$('#fPart').value||'-'}\nMaterial: ${$('#fMat').value||'-'}\nService life: ${$('#fLife').value||'-'}\nWhat happened: ${$('#fWhat').value||'-'}`;
     const prompt=`You are a senior failure-analysis engineer helping maintenance technicians in a factory. Look at the attached photo(s) of a failed machine part or component — it may be mechanical, a PCB/electronic board, PLC, sensor, electropneumatic valve/solenoid/cylinder, or a cable/connector (colored marks, numbers, and labels were added by the technician to show areas of interest). Use the part details below.
 
@@ -1393,7 +1395,7 @@ function partsText(){return st.parts.filter(p=>p.name||p.func).map((p,i)=>`${i+1
 function inquiryText(){return st.inquiry.filter(x=>x.a.trim()).map(x=>`Q: ${x.q}\nA: ${x.a.trim()}`).join('\n')||'(no answers yet)'}
 function caseText(){return`Machine: ${v('#fMachine')||'-'}\nFailed part: ${v('#fPart')||'-'}\nMaterial: ${v('#fMat')||'-'}\nService life: ${v('#fLife')||'-'}\nWhat happened: ${v('#fWhat')||'-'}\nPart category: ${(CATS.find(c=>c[0]===cat)||[0,'not specified'])[1]}\nPhotos (in order; 'Video frame @ m:ss' = still frame from a video): ${st.photos.map((P,i)=>`Photo ${i+1}: ${P.label}${P.note?` (note: "${P.note}")`:''}`).join('; ')||'none'}`}
 async function evidenceBlobs(){let max=8;try{const l=await SAMPLE.limits();if(!l||!l.images)return[];if(typeof l.images==='number')max=l.images;else if(typeof l.maxImages==='number')max=l.maxImages}catch(e){}
-  const out=[];for(let i=0;i<Math.min(st.photos.length,max);i++){const c=exportCanvas(1100,i);out.push(await new Promise(r=>c.toBlob(r,'image/jpeg',.85)))}return out}
+  const out=[];for(let i=0;i<Math.min(st.photos.length,max);i++){const c=exportCanvas(900,i);out.push(await new Promise(r=>c.toBlob(r,'image/jpeg',.8)))}return out}
 function aiErr(e){const c=e&&e.code;return c==='not_granted'?'AI access was not allowed.':c==='rate_limited'?'Too many requests — wait a minute and try again.':'Could not complete: '+((e&&e.message)||'unknown error')}
 $('#aiParts').onclick=async()=>{if(!SAMPLE){toast((st.lang==='tl'?'Ikonekta muna ang AI: 👤 → AI settings':'Connect AI first: 👤 → AI settings'));return}if(!st.photos.length){toast('Add photos first');return}
   const b=$('#aiParts'),s=$('#aiPartsStatus');b.disabled=true;s.innerHTML='<span class="spin"></span> AI is looking at your photos…';
@@ -1987,19 +1989,25 @@ var CLAUDE_S=null;
 function gemKey(){return(st.user&&st.user.gemKey)||''}
 async function b64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(blob)})}
 async function partsFor(text,blobs){const p=[{text:String(text)}];for(const b of blobs||[])p.push({inline_data:{mime_type:b.type||'image/jpeg',data:await b64(b)}});return p}
-async function gemCall(contents,json){const model=(st.user&&st.user.gemModel)||'gemini-flash-latest';let r;
-  try{r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':gemKey()},body:JSON.stringify({contents,generationConfig:Object.assign({temperature:.4},json?{responseMimeType:'application/json'}:{})})})}
-  catch(e){throw{code:'network',message:st.lang==='tl'?'Hindi maabot ang Gemini. Gumagana ang Gemini sa website version (may internet). Buksan ang FailSight sa website (GitHub Pages / setupgo.net) gamit ang Chrome.':'Cannot reach Gemini. Gemini works on the website version (with internet). Open FailSight on the website (GitHub Pages / setupgo.net) in Chrome.'}}
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok){const m=(d.error&&d.error.message)||r.statusText||('HTTP '+r.status);if(r.status===429)throw{code:'rate_limited',message:'Gemini free limit reached. Wait a minute (daily limits reset after midnight US Pacific time).'};if(/API key/i.test(m))throw{code:'bad_key',message:'Gemini API key is not valid. Check it in 👤 → AI settings.'};throw{code:'gemini',message:'Gemini: '+m}}
-  const c0=(d.candidates||[])[0],txt=((c0&&c0.content&&c0.content.parts)||[]).map(p=>p.text||'').join('');
-  if(!txt)throw{message:'Gemini gave no answer'+((d.promptFeedback&&d.promptFeedback.blockReason)?' ('+d.promptFeedback.blockReason+')':'')};return txt}
+let AIBUSY=0;function aiBusy(on){AIBUSY+=on?1:-1;const el=$('#aiBusy');if(!el)return;if(AIBUSY>0){if(!el._t0)el._t0=Date.now();el.style.display='flex';clearInterval(el._iv);const tick=()=>{const s=Math.round((Date.now()-el._t0)/1000);el.innerHTML=`<span class="spin"></span> ${st.lang==='tl'?'Nag-iisip ang AI':'AI is working'}… ${s}s${s>25?(st.lang==='tl'?' · mabagal ang internet o abala ang Gemini':' · slow internet or Gemini is busy'):''}`};tick();el._iv=setInterval(tick,1000)}else{AIBUSY=0;clearInterval(el._iv);el._t0=0;el.style.display='none'}}
+async function gemCall(contents,json){const model=(st.user&&st.user.gemModel)||'gemini-flash-latest';
+  const send=async(think)=>{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),120000);
+    try{return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','x-goog-api-key':gemKey()},body:JSON.stringify({contents,generationConfig:Object.assign({temperature:.4},json?{responseMimeType:'application/json'}:{},think?{thinkingConfig:{thinkingLevel:'low'}}:{})})})}
+    catch(e){if(e&&e.name==='AbortError')throw{code:'timeout',message:st.lang==='tl'?'Masyadong matagal (2 minuto). Subukan ulit, gumamit ng mas kaunting litrato, o mas malakas na internet.':'Took too long (2 minutes). Try again with fewer photos or a stronger internet connection.'};throw{code:'network',message:st.lang==='tl'?'Hindi maabot ang Gemini. Tingnan ang internet, o buksan ang FailSight sa website (setupgo.net/failsight) gamit ang Chrome.':'Cannot reach Gemini. Check your internet, or open FailSight on the website (setupgo.net/failsight) in Chrome.'}}
+    finally{clearTimeout(to)}};
+  aiBusy(true);
+  try{let useThink=window.__thinkOK!==false,r=await send(useThink),d=await r.json().catch(()=>({}));
+    if(!r.ok&&useThink&&r.status===400&&/think/i.test((d.error&&d.error.message)||'')){window.__thinkOK=false;r=await send(false);d=await r.json().catch(()=>({}))}
+    if(!r.ok){const m=(d.error&&d.error.message)||r.statusText||('HTTP '+r.status);if(r.status===429)throw{code:'rate_limited',message:st.lang==='tl'?'Naabot ang libreng limit ng Gemini. Maghintay ng 1 minuto (nagre-reset ang daily limit pagkatapos ng hatinggabi sa US Pacific time).':'Gemini free limit reached. Wait a minute (daily limits reset after midnight US Pacific time).'};if(/API key/i.test(m))throw{code:'bad_key',message:'Gemini API key is not valid. Check it in 👤 → AI settings.'};if(r.status===404)throw{code:'model',message:'Gemini model not found: '+model+'. In 👤 → AI settings set the model to gemini-flash-latest.'};throw{code:'gemini',message:'Gemini: '+m}}
+    const c0=(d.candidates||[])[0],txt=((c0&&c0.content&&c0.content.parts)||[]).filter(p=>!p.thought).map(p=>p.text||'').join('');
+    if(!txt)throw{message:'Gemini gave no answer'+((d.promptFeedback&&d.promptFeedback.blockReason)?' ('+d.promptFeedback.blockReason+')':'')+(st.lang==='tl'?'. Subukan ulit.':'. Please try again.')};return txt}
+  finally{aiBusy(false)}}
 function parseJ(t){t=String(t).trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'');try{return JSON.parse(t)}catch(e){const m=t.match(/\{[\s\S]*\}/);if(m)return JSON.parse(m[0]);throw{message:'Could not read the AI reply. Please try again.'}}}
 var GEM=Object.assign(async function(input,opts){opts=opts||{};let contents=[];
     if(typeof input==='string')contents=[{role:'user',parts:await partsFor(input,opts.images)}];
     else for(let i=0;i<input.length;i++){const m=input[i];contents.push({role:m.role==='assistant'?'model':'user',parts:i===0?await partsFor(m.content,opts.images):[{text:String(m.content)}]})}
     const t=await gemCall(contents,false);if(opts.onText)opts.onText({text:t});return{text:t,truncated:false}},
-  {json:async(prompt,opts)=>parseJ(await gemCall([{role:'user',parts:await partsFor(prompt,(opts||{}).images)}],true)),limits:async()=>({images:8}),isGemini:true,
+  {json:async(prompt,opts)=>parseJ(await gemCall([{role:'user',parts:await partsFor(prompt,(opts||{}).images)}],true)),limits:async()=>({images:6}),isGemini:true,
    audio:async(prompt,blob)=>parseJ(await gemCall([{role:'user',parts:await partsFor(prompt,[blob])}],true))});
 function refreshAI(){SAMPLE=gemKey()?GEM:null;capsChecked=true;try{updateAiCard()}catch(e){}}
 function aiName(){return SAMPLE?'Gemini':'—'}
