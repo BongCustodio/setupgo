@@ -352,7 +352,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:20px}
   <div id="repPreview"></div>
 </section>
 </main>
-<footer>SetupGo FailSight v3.3 · © 2026 SetupGo Digital Design Services · Fernando Bolen Custodio. All rights reserved.<br>Simulations are simplified teaching models of each failure mechanism.</footer>
+<footer>SetupGo FailSight v3.5 · © 2026 SetupGo Digital Design Services · Fernando Bolen Custodio. All rights reserved.<br>Simulations are simplified teaching models of each failure mechanism.</footer>
 
 <div id="dlg"><div class="box"><b>Add text label</b><input type="text" id="dlgIn" placeholder="e.g. Crack origin"><div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn sm" id="dlgNo">Cancel</button><button class="btn sm pri" id="dlgOk">Add</button></div></div></div>
 <div id="toast"></div>
@@ -784,7 +784,7 @@ function renderAi(){const a=st.ai;if(!a)return;$('#aiOut').innerHTML=`<div class
   $$('[data-fq]').forEach(b=>b.onclick=()=>{$('#fuIn').value=b.dataset.fq;askFollow()});micify();$('#fuBtn').onclick=askFollow;$('#fuIn').onkeydown=e=>{if(e.key==='Enter')askFollow()}}
 st.chat=[];
 async function askFollow(){const q=($('#fuIn').value||'').trim();if(!q||!SAMPLE||!st.ai)return;const btn=$('#fuBtn');btn.disabled=true;$('#fuIn').value='';
-  const box=document.createElement('div');box.className='ans';box.innerHTML=`<b>You:</b> ${esc(q)}\n<b>AI:</b> <span class="spin"></span>`;$('#fuOut').appendChild(box);const span=box.lastChild;
+  const box=document.createElement('div');box.className='ans';box.innerHTML=`<b>You:</b> ${esc(q)}\n<b>AI:</b> <span class="spin"></span><span class="fuTxt"></span>`;$('#fuOut').appendChild(box);const spn=box.querySelector('.spin'),txt=box.querySelector('.fuTxt');const span={set textContent(v){if(spn.isConnected)spn.remove();txt.textContent=v}};
   const msgs=[{role:'user',content:st.aiPrompt},{role:'assistant',content:JSON.stringify(st.ai)}];st.chat.forEach(m=>msgs.push(m));msgs.push({role:'user',content:q+'\n\n(The technician may write in English, Tagalog, or Taglish. Answer '+(st.lang==='tl'?'in Taglish (simple Tagalog, keep technical terms in English)':'in plain English')+' for factory technicians, short and practical, max ~150 words, no markdown headings.)'});
   try{const r=await SAMPLE(msgs,{images:st.aiBlobs||[],modelTier:'default',cache:false,onText:({text})=>{span.textContent=text}});span.textContent=r.text;st.chat.push({role:'user',content:q},{role:'assistant',content:r.text})}
   catch(e){span.textContent=e&&e.code==='rate_limited'?'Too many requests – please wait a minute.':'Could not answer: '+((e&&e.message)||'error')}finally{btn.disabled=false}}
@@ -1990,14 +1990,20 @@ function gemKey(){return(st.user&&st.user.gemKey)||''}
 async function b64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(blob)})}
 async function partsFor(text,blobs){const p=[{text:String(text)}];for(const b of blobs||[])p.push({inline_data:{mime_type:b.type||'image/jpeg',data:await b64(b)}});return p}
 let AIBUSY=0;function aiBusy(on){AIBUSY+=on?1:-1;const el=$('#aiBusy');if(!el)return;if(AIBUSY>0){if(!el._t0)el._t0=Date.now();el.style.display='flex';clearInterval(el._iv);const tick=()=>{const s=Math.round((Date.now()-el._t0)/1000);el.innerHTML=`<span class="spin"></span> ${st.lang==='tl'?'Nag-iisip ang AI':'AI is working'}… ${s}s${s>25?(st.lang==='tl'?' · mabagal ang internet o abala ang Gemini':' · slow internet or Gemini is busy'):''}`};tick();el._iv=setInterval(tick,1000)}else{AIBUSY=0;clearInterval(el._iv);el._t0=0;el.style.display='none'}}
-async function gemCall(contents,json){const model=(st.user&&st.user.gemModel)||'gemini-flash-latest';
+async function gemCall(contents,json){const MAIN=(st.user&&st.user.gemModel)||'gemini-flash-latest';let model=MAIN;const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const send=async(think)=>{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),120000);
     try{return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','x-goog-api-key':gemKey()},body:JSON.stringify({contents,generationConfig:Object.assign({temperature:.4},json?{responseMimeType:'application/json'}:{},think?{thinkingConfig:{thinkingLevel:'low'}}:{})})})}
     catch(e){if(e&&e.name==='AbortError')throw{code:'timeout',message:st.lang==='tl'?'Masyadong matagal (2 minuto). Subukan ulit, gumamit ng mas kaunting litrato, o mas malakas na internet.':'Took too long (2 minutes). Try again with fewer photos or a stronger internet connection.'};throw{code:'network',message:st.lang==='tl'?'Hindi maabot ang Gemini. Tingnan ang internet, o buksan ang FailSight sa website (setupgo.net/failsight) gamit ang Chrome.':'Cannot reach Gemini. Check your internet, or open FailSight on the website (setupgo.net/failsight) in Chrome.'}}
     finally{clearTimeout(to)}};
   aiBusy(true);
   try{let useThink=window.__thinkOK!==false,r=await send(useThink),d=await r.json().catch(()=>({}));
-    if(!r.ok&&useThink&&r.status===400&&/think/i.test((d.error&&d.error.message)||'')){window.__thinkOK=false;r=await send(false);d=await r.json().catch(()=>({}))}
+    if(!r.ok&&useThink&&r.status===400&&/think/i.test((d.error&&d.error.message)||'')){window.__thinkOK=false;useThink=false;r=await send(false);d=await r.json().catch(()=>({}))}
+    const busy=()=>!r.ok&&(r.status===503||r.status===500||/high demand|overloaded|unavailable/i.test((d.error&&d.error.message)||''));
+    for(const wait of [2500,6000]){if(!busy())break;await sleep(wait);r=await send(useThink);d=await r.json().catch(()=>({}))}
+    if(busy()){const FB=MAIN.includes('lite')?'gemini-flash-latest':'gemini-flash-lite-latest';model=FB;r=await send(useThink);d=await r.json().catch(()=>({}));
+      if(!r.ok&&r.status===400&&/think/i.test((d.error&&d.error.message)||'')){r=await send(false);d=await r.json().catch(()=>({}))}
+      if(r.ok)toast(st.lang==='tl'?'Abala ang pangunahing Gemini model — ginamit ang backup ('+FB+')':'Main Gemini model was busy — used backup ('+FB+')')}
+    if(busy())throw{code:'busy',message:st.lang==='tl'?'Abala ngayon ang Gemini (maraming gumagamit). Normal ito at pansamantala lang — subukan ulit pagkalipas ng 1–5 minuto.':'Gemini is busy right now (high demand). This is normal and temporary — please try again in 1–5 minutes.'};
     if(!r.ok){const m=(d.error&&d.error.message)||r.statusText||('HTTP '+r.status);if(r.status===429)throw{code:'rate_limited',message:st.lang==='tl'?'Naabot ang libreng limit ng Gemini. Maghintay ng 1 minuto (nagre-reset ang daily limit pagkatapos ng hatinggabi sa US Pacific time).':'Gemini free limit reached. Wait a minute (daily limits reset after midnight US Pacific time).'};if(/API key/i.test(m))throw{code:'bad_key',message:'Gemini API key is not valid. Check it in 👤 → AI settings.'};if(r.status===404)throw{code:'model',message:'Gemini model not found: '+model+'. In 👤 → AI settings set the model to gemini-flash-latest.'};throw{code:'gemini',message:'Gemini: '+m}}
     const c0=(d.candidates||[])[0],txt=((c0&&c0.content&&c0.content.parts)||[]).filter(p=>!p.thought).map(p=>p.text||'').join('');
     if(!txt)throw{message:'Gemini gave no answer'+((d.promptFeedback&&d.promptFeedback.blockReason)?' ('+d.promptFeedback.blockReason+')':'')+(st.lang==='tl'?'. Subukan ulit.':'. Please try again.')};return txt}
