@@ -352,7 +352,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:20px}
   <div id="repPreview"></div>
 </section>
 </main>
-<footer>SetupGo FailSight v3.5 · © 2026 SetupGo Digital Design Services · Fernando Bolen Custodio. All rights reserved.<br>Simulations are simplified teaching models of each failure mechanism.</footer>
+<footer>SetupGo FailSight v3.6 · © 2026 SetupGo Digital Design Services · Fernando Bolen Custodio. All rights reserved.<br>Simulations are simplified teaching models of each failure mechanism.</footer>
 
 <div id="dlg"><div class="box"><b>Add text label</b><input type="text" id="dlgIn" placeholder="e.g. Crack origin"><div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn sm" id="dlgNo">Cancel</button><button class="btn sm pri" id="dlgOk">Add</button></div></div></div>
 <div id="toast"></div>
@@ -1298,9 +1298,9 @@ function fitText(c,txt,x,y,maxW,size,col){let s=size;c.save();do{c.font=`500 ${s
 function drawSim(){const c=sc,P=Math.min(S.p,1),M=MODES[st.mode];c.setTransform(1,0,0,1,0,0);
   const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0d1a3d');g.addColorStop(1,'#07102a');c.fillStyle=g;c.fillRect(0,0,W,H);
   c.strokeStyle='rgba(159,176,214,.05)';c.lineWidth=1;for(let x=0;x<W;x+=40){c.beginPath();c.moveTo(x,0);c.lineTo(x,630);c.stroke()}for(let y=0;y<630;y+=40){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke()}
-  const Ph=(S.view==='photo'&&st.photos.length)?st.photos[Math.min(S.photoIdx,st.photos.length-1)]:null;if(S.view==='3d')render3D(c,P,M);else if(Ph)drawPhotoSim(c,P,M,Ph);else{c.save();try{M.draw(c,P,S.t)}catch(e){console.error(e)}c.restore()}
+  const Ph=(S.view==='photo'&&st.photos.length)?st.photos[Math.min(S.photoIdx,st.photos.length-1)]:null;if(S.view==='3d')render3D(c,P,M);else if(S.view==='reenact'&&st.photos.length)drawReenact(c,P,M,st.photos[Math.min(S.photoIdx,st.photos.length-1)]);else if(Ph)drawPhotoSim(c,P,M,Ph);else{c.save();try{M.draw(c,P,S.t)}catch(e){console.error(e)}c.restore()}
   tag(c,M.ico+'  '+M.name,40,46,{s:30,w:800});tag(c,st.lang==='tl'?'Simulation ng pagkasira':'Failure mechanism simulation',40,80,{s:17,c:'#9fb0d6'});if(S.realCycles&&['frac','wear'].includes(FAM[st.mode]))tag(c,`⚙️ ${st.lang==='tl'?'Totoong datos':'Real data'}: ≈ ${Math.round(S.realCycles).toLocaleString()} ${st.lang==='tl'?'ikot habang ginagamit':'load cycles in service'}`,40,134,{s:16,w:700,bg:'#34d399'});
-  if(drawPin(c,P,M)){}else if(!Ph&&st.img&&$('#inset').checked){let iw=210,ih=iw*st.img.height/st.img.width;if(ih>150){ih=150;iw=ih*st.img.width/st.img.height}const x=W-iw-20,y=16;
+  if(drawPin(c,P,M)){}else if(!Ph&&S.view!=='reenact'&&st.img&&$('#inset').checked){let iw=210,ih=iw*st.img.height/st.img.width;if(ih>150){ih=150;iw=ih*st.img.width/st.img.height}const x=W-iw-20,y=16;
     c.save();c.fillStyle='#000';c.fillRect(x-3,y-3,iw+6,ih+6);c.drawImage(st.img,x,y,iw,ih);c.translate(x,y);drawAnn(c,iw/st.img.width,st.img.width,st.ann);c.restore();
     c.strokeStyle='#ffb03b';c.lineWidth=2;c.strokeRect(x-3,y-3,iw+6,ih+6);tag(c,'Actual part',x+6,y+ih-12,{s:14,w:700,bg:'#ffb03b'})}
   let si=0;M.stages.forEach((s,i)=>{if(P>=s.at)si=i});
@@ -2163,6 +2163,124 @@ renderParts();renderInquiry();updateAiCard();applyLang();const _go2=go;go=functi
 $('#startBtn').onclick=()=>go('photo');$('#sampleBtn').onclick=()=>{if(!st.user){openLogin(()=>{_go2('photo');setTimeout(()=>$('#demoBtn').click(),60)});return}go('photo');setTimeout(()=>$('#demoBtn').click(),60)};
 {const _lb=$('#langBtn').onclick;$('#langBtn').onclick=()=>{_lb();if(st.user){st.user.lang=st.lang;saveUsers()}setUser(st.user);setMark(st.markOn);if(st.listen)renderListen()}}
 {const sid=LS.get('failsight_session',null);setUser(USERS.find(u=>u.id===sid)||null)}setMark(false);setMode('fatigue',true);requestAnimationFrame(t=>{S.last=t;requestAnimationFrame(frame)});
+/* ================= v3.5 REENACTMENT: healthy "before" twin → failure event → your actual photo ================= */
+const RX={mc:document.createElement('canvas'),fc:document.createElement('canvas')};
+function rxTl(){return st.lang==='tl'}
+function curSimPhoto(){return st.photos.length?st.photos[Math.min(S.photoIdx,st.photos.length-1)]:null}
+/* damage mask from the user's marks (in a w×h canvas that maps the whole photo) */
+function damageMask(Ph,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d'),s=w/Ph.img.width,iw=Ph.img.width;x.fillStyle='#fff';x.strokeStyle='#fff';x.lineCap='round';x.lineJoin='round';let any=false;
+  (Ph.ann||[]).forEach(a=>{const P=a.pts.map(q=>({x:q.x*s,y:q.y*s}));if(!P.length)return;
+    if(a.type==='circle'||a.type==='box'){const A=P[0],B=P[P.length-1],cx=(A.x+B.x)/2,cy=(A.y+B.y)/2,rx=Math.abs(B.x-A.x)/2*1.15+4,ry=Math.abs(B.y-A.y)/2*1.15+4;x.beginPath();if(a.type==='box')x.rect(cx-rx,cy-ry,2*rx,2*ry);else x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);x.fill();any=true}
+    else if(a.type==='pen'){x.lineWidth=Math.max(6,iw/26*s);x.beginPath();P.forEach((q,i)=>i?x.lineTo(q.x,q.y):x.moveTo(q.x,q.y));x.stroke();any=true}
+    else if(a.type==='num'||a.type==='arrow'){const q=P[P.length-1];x.beginPath();x.arc(q.x,q.y,iw/14*s,0,Math.PI*2);x.fill();any=true}});
+  if(!any){x.beginPath();x.ellipse(w/2,h/2,Math.min(w,h)*.26,Math.min(w,h)*.26,0,0,Math.PI*2);x.fill()}
+  return c}
+function featherC(src,k){const w=src.width,h=src.height,t=document.createElement('canvas');t.width=Math.max(2,Math.round(w/k));t.height=Math.max(2,Math.round(h/k));const tx=t.getContext('2d');tx.imageSmoothingEnabled=true;tx.drawImage(src,0,0,t.width,t.height);
+  const o=document.createElement('canvas');o.width=w;o.height=h;const ox=o.getContext('2d');ox.imageSmoothingEnabled=true;ox.drawImage(t,0,0,w,h);return o}
+/* 🪄 Quick restore (offline, free): fills the marked damage from surrounding good surface */
+function quickRestore(Ph){const img=Ph.img,MX=1600,k0=Math.min(1,MX/Math.max(img.width,img.height)),W0=Math.round(img.width*k0),H0=Math.round(img.height*k0);
+  const out=document.createElement('canvas');out.width=W0;out.height=H0;const ox=out.getContext('2d');ox.drawImage(img,0,0,W0,H0);
+  const ks=Math.min(1,360/Math.max(W0,H0)),sw=Math.max(8,Math.round(W0*ks)),sh=Math.max(8,Math.round(H0*ks));
+  const sm=document.createElement('canvas');sm.width=sw;sm.height=sh;const sx=sm.getContext('2d');sx.drawImage(img,0,0,sw,sh);
+  const id=sx.getImageData(0,0,sw,sh),d=id.data,mk=damageMask(Ph,sw,sh).getContext('2d').getImageData(0,0,sw,sh).data,N=sw*sh,known=new Uint8Array(N),filled=new Uint8Array(N);
+  let left=0;for(let i=0;i<N;i++){if(mk[i*4+3]>40){known[i]=0;filled[i]=1;left++}else known[i]=1}
+  if(left===N)return null;
+  const nb=[-1,1,-sw,sw,-sw-1,-sw+1,sw-1,sw+1];
+  for(let pass=0;left>0&&pass<sw+sh;pass++){const batch=[];
+    for(let i=0;i<N;i++){if(known[i])continue;const xx=i%sw;let r=0,g=0,b=0,n=0;for(let j=0;j<8;j++){const o=nb[j],q=i+o,qx=xx+((j===0||j===4||j===6)?-1:(j===1||j===5||j===7)?1:0);if(q<0||q>=N||qx<0||qx>=sw||!known[q])continue;r+=d[q*4];g+=d[q*4+1];b+=d[q*4+2];n++}
+      if(n)batch.push([i,r/n,g/n,b/n])}
+    if(!batch.length)break;batch.forEach(([i,r,g,b])=>{d[i*4]=r;d[i*4+1]=g;d[i*4+2]=b;known[i]=1;left--})}
+  for(let p=0;p<3;p++){const c2=new Uint8ClampedArray(d);for(let i=0;i<N;i++){if(!filled[i])continue;const xx=i%sw,yy=(i/sw)|0;let r=0,g=0,b=0,n=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=xx+dx,Y=yy+dy;if(X<0||Y<0||X>=sw||Y>=sh)continue;const q=Y*sw+X;r+=c2[q*4];g+=c2[q*4+1];b+=c2[q*4+2];n++}d[i*4]=r/n;d[i*4+1]=g/n;d[i*4+2]=b/n}}
+  const R=rng(11);for(let i=0;i<N;i++){if(!filled[i])continue;const z=(R()-.5)*7;d[i*4]+=z;d[i*4+1]+=z;d[i*4+2]+=z}
+  sx.putImageData(id,0,0);
+  const up=document.createElement('canvas');up.width=W0;up.height=H0;const ux=up.getContext('2d');ux.imageSmoothingEnabled=true;ux.drawImage(sm,0,0,W0,H0);
+  ux.globalCompositeOperation='destination-in';ux.drawImage(featherC(damageMask(Ph,W0,H0),10),0,0);ox.drawImage(up,0,0);return out}
+/* ✨ AI before-image (Gemini image model — needs a billing-enabled key) */
+const IMG_MODELS=['gemini-2.5-flash-image','gemini-2.5-flash-image-preview'];
+function rxDamageWords(){return({frac:'cracks, fractures, breaks and missing pieces',wear:'wear marks, grooves, scoring and material loss',corr:'corrosion, rust, oxidation, dendrites, contamination, dirt and residue',heat:'burn marks, melting, scorching, heat discoloration, soot and charring',noise:'damaged insulation and burnt spots'})[FAM[st.mode]]||'all damage'}
+async function aiBefore(Ph){if(!gemKey())throw{code:'nokey',message:rxTl()?'Walang Gemini key. 👤 → AI settings.':'No Gemini key. Open 👤 → AI settings.'};
+  const img=Ph.img,k=Math.min(1,1024/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  const b64=c.toDataURL('image/jpeg',.88).split(',')[1],M=MODES[st.mode],mech=(st.ai&&(st.ai.mechanism||st.ai.title||st.ai.summary))||M.name;
+  const prompt=`This photo shows a FAILED machine part: "${Ph.label||'part'}". Diagnosed failure: ${mech}.
+Edit the photo to show the SAME part in brand-new, healthy condition, exactly as it looked BEFORE the failure.
+Remove ${rxDamageWords()}. Restore the original surface finish and color of the part.
+Keep EVERYTHING else identical: same part shape and size, same camera angle, same framing and crop, same lighting, same background and surrounding parts.
+Photorealistic. Do not add text, labels, arrows or watermarks.`;
+  let lastErr=null;
+  for(const model of IMG_MODELS){for(let attempt=0;attempt<3;attempt++){let r,dj;
+    try{r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':gemKey()},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt},{inline_data:{mime_type:'image/jpeg',data:b64}}]}],generationConfig:{responseModalities:['TEXT','IMAGE']}})});dj=await r.json().catch(()=>({}))}
+    catch(e){throw{code:'network',message:rxTl()?'Hindi maabot ang Gemini (internet?).':'Cannot reach Gemini (check internet).'}}
+    const msg=(dj.error&&dj.error.message)||'';
+    if(r.ok){const parts=((dj.candidates||[])[0]||{}).content?.parts||[],p=parts.find(q=>q.inlineData||q.inline_data);if(!p){lastErr={code:'noimg',message:rxTl()?'Walang larawang ibinalik ang AI.':'The AI did not return an image.'};break}
+      const dd=p.inlineData||p.inline_data,im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=`data:${dd.mimeType||dd.mime_type||'image/png'};base64,${dd.data}`});return im}
+    if(r.status===429&&/limit: ?0|free_tier/i.test(msg))throw{code:'paid',message:rxTl()?'Kailangan ng Gemini key na may billing (bayad) para gumawa ng AI na larawan.':'AI image making needs a Gemini key with billing turned on (the free tier does not include image generation).'};
+    if(r.status===404){lastErr={code:'model',message:msg};break}
+    if(r.status===400||r.status===403)throw{code:r.status===400&&/API key/i.test(msg)?'bad_key':'err',message:msg||('Error '+r.status)};
+    lastErr={code:r.status===429?'rate_limited':'busy',message:msg||('Error '+r.status)};await new Promise(z=>setTimeout(z,2500*(attempt+1)))}}
+  throw lastErr||{code:'err',message:'Unknown error'}}
+function setBefore(Ph,im,src){Ph.before=im;Ph.beforeSrc=src;Ph._dm=null;S.view='reenact';S.p=0;S.t=0;S.playing=true;try{refreshSimPhotos()}catch(e){}rxStatus()}
+function rxStatus(){const s=$('#rxSt');if(!s)return;const Ph=curSimPhoto(),tl=rxTl();if(!Ph){s.textContent=tl?'Mag-add muna ng litrato sa step 1.':'Add a photo in step 1 first.';return}
+  s.innerHTML=Ph.before?('✅ '+(tl?'May "bago pa" na larawan':'"Before" image ready')+' — '+({ai:tl?'gawa ng AI':'made by AI',auto:tl?'Quick restore (tantiya)':'Quick restore (approximate)',good:tl?'litrato ng maayos na piyesa':'photo of a good part'})[Ph.beforeSrc]):(tl?'Gumawa ng "bago pa" na larawan para makita ang buong pangyayari.':'Make a "before" image to replay the whole event.')}
+/* ---- draw the reenactment ---- */
+function drawReenact(c,P,M,Ph){const G=photoGeom(Ph),tl=rxTl(),fam=FAM[st.mode],fw=Math.round(G.fw),fh=Math.round(G.fh);
+  c.fillStyle='#000';c.fillRect(0,0,W,626);
+  const B=Ph.before;
+  if(!B){c.drawImage(Ph.img,G.fx,G.fy,G.fw,G.fh);c.fillStyle='rgba(5,10,28,.6)';c.fillRect(0,0,W,626);
+    tag(c,tl?'🎬 Bago → Pagkasira':'🎬 Before → Failure reenactment',W/2,250,{s:30,w:800,al:'center'});
+    tag(c,tl?'Pindutin ang ✨ AI, 🪄 Quick restore, o 📷 maayos na piyesa sa ibaba':'Tap ✨ AI, 🪄 Quick restore, or 📷 Good part below',W/2,300,{s:19,al:'center',c:'#ffd23b'});
+    tag(c,tl?'para gawin ang itsura nito BAGO nasira':'to create how this part looked BEFORE it failed',W/2,332,{s:17,al:'center',c:'#9fb0d6'});return}
+  // shake during the triggering load for fracture-type failures
+  const shake=(fam==='frac'?seg(P,.2,.3)*(1-seg(P,.72,.76)):0)*Math.sin(S.t*38)*3;c.save();c.translate(shake,0);
+  c.drawImage(B,G.fx,G.fy,G.fw,G.fh);
+  // reveal the real failure growing out of the origin
+  const g=seg(P,.3,.88),gf=seg(P,.82,.92);
+  if(g>0||gf>0){const mc=RX.mc,fc=RX.fc;if(mc.width!==fw||mc.height!==fh){mc.width=fc.width=fw;mc.height=fc.height=fh}
+    if(!Ph._dm||Ph._dm.width!==fw||Ph._dm.height!==fh)Ph._dm=featherC(damageMask(Ph,fw,fh),9);
+    const mx=mc.getContext('2d'),fx2=fc.getContext('2d');mx.globalCompositeOperation='source-over';mx.clearRect(0,0,fw,fh);
+    const ox=G.o.x-G.fx,oy=G.o.y-G.fy,cr=[[G.reg.x,G.reg.y],[G.reg.x+G.reg.w,G.reg.y],[G.reg.x,G.reg.y+G.reg.h],[G.reg.x+G.reg.w,G.reg.y+G.reg.h]].map(([a,b])=>Math.hypot(a-G.o.x,b-G.o.y)),Rm=Math.max(...cr,G.path.L,40)*1.25;
+    if(g>0){const R=Math.max(2,Rm*g),gr=mx.createRadialGradient(ox,oy,0,ox,oy,R);gr.addColorStop(0,'#fff');gr.addColorStop(.75,'rgba(255,255,255,.9)');gr.addColorStop(1,'rgba(255,255,255,0)');mx.fillStyle=gr;mx.beginPath();mx.arc(ox,oy,R,0,Math.PI*2);mx.fill();
+      if(fam==='frac'||fam==='noise'){const pp=partial(G.path,g);mx.strokeStyle='#fff';mx.lineCap='round';mx.lineWidth=Math.max(8,G.r0*.06);mx.beginPath();pp.forEach((q,i)=>i?mx.lineTo(q.x-G.fx,q.y-G.fy):mx.moveTo(q.x-G.fx,q.y-G.fy));mx.stroke()}
+      mx.globalCompositeOperation='destination-in';mx.drawImage(Ph._dm,0,0);mx.globalCompositeOperation='source-over'}
+    if(gf>0){mx.fillStyle=`rgba(255,255,255,${gf})`;mx.fillRect(0,0,fw,fh)}
+    fx2.globalCompositeOperation='source-over';fx2.clearRect(0,0,fw,fh);fx2.drawImage(Ph.img,0,0,fw,fh);fx2.globalCompositeOperation='destination-in';fx2.drawImage(mc,0,0);fx2.globalCompositeOperation='source-over';
+    c.drawImage(fc,G.fx,G.fy)}
+  c.fillStyle='rgba(5,10,28,.1)';c.fillRect(0,0,W,626);
+  // normal operation: green "healthy" outline
+  const ok=1-seg(P,.16,.22);if(ok>0){c.save();c.globalAlpha=ok*(.6+.4*Math.sin(S.t*4));regPath(c,G);c.strokeStyle='#34d399';c.lineWidth=4;c.stroke();c.restore();
+    tag(c,'✓ '+(tl?'Normal na kondisyon':'Normal condition'),G.reg.cx,Math.max(130,G.reg.y-24),{s:20,w:800,al:'center',bg:'#34d399',a:ok})}
+  // trigger + mechanism overlays (same physics as "On my photo")
+  if(P>.14&&P<.9){c.save();c.globalAlpha=1-seg(P,.8,.9);try{({frac:fxFrac,wear:fxWear,corr:fxCorr,heat:fxHeat,noise:fxNoise})[fam](c,G,P,S.t,st.mode)}catch(e){console.error(e)}c.restore()}
+  const trg=seg(P,.16,.2)*(1-seg(P,.34,.38));if(trg>0)tag(c,'⚡ '+(tl?'NAGSIMULA ANG PROBLEMA':'TRIGGER EVENT'),W/2,150,{s:24,w:800,al:'center',bg:'#ff4f7b',a:trg});
+  c.restore();
+  // final before | after comparison wipe
+  const wp=seg(P,.93,1);if(wp>0){const wT=clamp(G.reg.cx,G.fx+G.fw*.25,G.fx+G.fw*.75),wx=lerp(G.fx+G.fw,wT,wp);c.save();c.beginPath();c.rect(G.fx,0,wx-G.fx,626);c.clip();c.fillStyle='#000';c.fillRect(G.fx,G.fy,G.fw,G.fh);c.drawImage(B,G.fx,G.fy,G.fw,G.fh);c.restore();
+    c.fillStyle='#fff';c.fillRect(wx-2,G.fy,4,G.fh);
+    tag(c,tl?'BAGO':'BEFORE',G.fx+14,G.fy+G.fh-24,{s:20,w:800,bg:'#34d399',a:wp});tag(c,tl?'PAGKATAPOS (totoong litrato)':'AFTER (your photo)',G.fx+G.fw-14,G.fy+G.fh-24,{s:20,w:800,al:'right',bg:'#ff4f7b',a:wp})}
+  // header + stage badge
+  const hg=c.createLinearGradient(0,0,0,110);hg.addColorStop(0,'rgba(5,10,28,.92)');hg.addColorStop(1,'rgba(5,10,28,0)');c.fillStyle=hg;c.fillRect(0,0,W,110);
+  const ph=P<.3?[tl?'BAGO · bagong piyesa':'BEFORE · healthy part','#34d399']:P<.9?[tl?'NANGYAYARI · lumalala ang sira':'EVENT · damage growing','#ffb03b']:[tl?'PAGKATAPOS · totoong sira':'AFTER · actual failure','#ff4f7b'];
+  tag(c,ph[0],W-24,32,{s:17,w:800,al:'right',bg:ph[1]});
+  tag(c,({ai:tl?'"Bago" na larawan: gawa ng AI':'"Before" image: AI-generated',auto:tl?'"Bago" na larawan: Quick restore (tantiya)':'"Before" image: quick restore (approximate)',good:tl?'"Bago" na larawan: maayos na piyesa':'"Before" image: photo of a good part'})[Ph.beforeSrc]+' · '+(tl?'paglalarawan, hindi sukat':'illustration, not a measurement'),W-24,62,{s:13,al:'right',c:'#9fb0d6'})}
+/* ---- hook into the sim ---- */
+(function(){
+  const row=document.createElement('div');row.className='row';row.id='rowRe';row.style.cssText='display:none;margin:8px 0 0;flex-wrap:wrap;gap:6px';
+  row.innerHTML=`<button class="btn sm pri" id="rxAi">✨ AI "before" image</button><button class="btn sm" id="rxAuto">🪄 Quick restore (free)</button><label class="btn sm" style="cursor:pointer">📷 Good part photo<input type="file" accept="image/*" id="rxGood" hidden></label><span class="mut small" id="rxSt"></span>`;
+  const r3=$('#row3d');r3.parentNode.insertBefore(row,r3.nextSibling);
+  const chip=document.createElement('button');chip.className='chip';chip.dataset.view='reenact';chip.textContent='🎬 Before → Failure';const first=$('[data-view="photo"]');first.parentNode.insertBefore(chip,first);
+  chip.onclick=()=>{if(!st.photos.length){toast(rxTl()?'Mag-add muna ng litrato sa step 1':'Add photos in step 1 first');return}S.view='reenact';S.p=0;S.t=0;refreshSimPhotos()};
+  const _rf=refreshSimPhotos;refreshSimPhotos=function(){_rf.apply(this,arguments);const cv=S.view==='reenact'&&st.photos.length?'reenact':null;if(S.view==='reenact'&&!st.photos.length){$$('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view==='model'))}
+    if(cv)$$('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view==='reenact'));$('#rowRe').style.display=cv?'flex':'none';rxStatus()};
+  const _sel=$('#simPhoto').onchange;$('#simPhoto').onchange=e=>{_sel(e);rxStatus()};
+  $('#rxAuto').onclick=()=>{const Ph=curSimPhoto();if(!Ph)return;const s=$('#rxSt');s.innerHTML='<span class="spin"></span> '+(rxTl()?'Inaayos…':'Restoring…');
+    setTimeout(()=>{try{const o=quickRestore(Ph);if(!o){toast(rxTl()?'Masyadong malaki ang marka — markahan lang ang sirang bahagi':'The marked area is too big — mark only the damaged area');rxStatus();return}setBefore(Ph,o,'auto');if(!(Ph.ann||[]).length)toast(rxTl()?'Tip: markahan ang sira sa step 1 para mas tama ang restore':'Tip: mark the damage in step 1 for a better restore')}catch(e){console.error(e);toast('Restore failed');rxStatus()}},30)};
+  $('#rxAi').onclick=async()=>{const Ph=curSimPhoto();if(!Ph)return;const b=$('#rxAi'),s=$('#rxSt'),tl=rxTl();b.disabled=true;s.innerHTML='<span class="spin"></span> '+(tl?'Ginagawa ng AI ang "bago pa" na larawan… (20–60 s)':'AI is making the "before" image… (20–60 s)');aiBusy(true);
+    try{const im=await aiBefore(Ph);setBefore(Ph,im,'ai');toast(tl?'Handa na! Panoorin ang Bago → Pagkasira':'Ready! Watch Before → Failure')}
+    catch(e){console.warn(e);if(e&&e.code==='paid'){const o=quickRestore(Ph);if(o)setBefore(Ph,o,'auto');s.innerHTML='⚠️ '+esc(e.message)+' '+(tl?'Ginamit muna ang 🪄 Quick restore. O kaya 📷 kunan ng litrato ang maayos na piyesa.':'Used 🪄 Quick restore instead. For a real look, use 📷 Good part photo.')}
+      else s.textContent='❌ '+(e&&e.code==='nokey'?e.message:aiErr(e))}
+    finally{aiBusy(false);b.disabled=false}};
+  $('#rxGood').onchange=e=>{const f=e.target.files&&e.target.files[0];e.target.value='';const Ph=curSimPhoto();if(!f||!Ph)return;const im=new Image();im.onload=()=>setBefore(Ph,im,'good');im.src=URL.createObjectURL(f)};
+})();
+
 </script>
 </body>
 </html>
